@@ -1,0 +1,173 @@
+---
+title: 'STAT 306 Project'
+author: 'Sophia Yang (33176769), '
+date: "13 April, 2023"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(RColorBrewer)
+library(GGally)
+library(cowplot)
+```
+
+## Introduction
+
+We will be using the sleep efficiency dataset:
+
+https://www.kaggle.com/datasets/equilibriumm/sleep-efficiency in Kaggle, which contains 100 observations.
+
+The data was collected in 2021 by a research team in the UK, and was collected from the University of Oxfordshire. It was collected from a local community over a period of several months using a combination of self-reported surveys, actigraphy, and polysomnography (a sleep monitoring technique). 
+
+**Our research question and motivation behind the analysis of the data:**
+
+Which variables are most important in predicting sleep efficiency? And how do these variables relate to sleep efficiency?
+
+We use a forward selection process to determine which variables are most relevant for predicting sleep efficiency and build regression models based only on the variables selected. After comparing different models, we select the best model and use this model to predict the test dataset and combine it with the actual values to see how accurate our model is.
+
+From the model, we can develop a general idea about what factors relate to sleep efficiency and how they are correlated. Therefore, it may suggest some methods to improve sleep patterns by controlling certain factors. 
+
+```{r}
+sleep <- read.csv('Sleep_Efficiency.csv')
+
+# Convert certain variables into categorical variables 
+# Gender: male is encoded as 1, and female is encoded as 0
+# Smoking status: Yes is encoded as 1, and No is encoded as 0
+sleep <- sleep |>
+    mutate(Caffeine.consumption = as.factor(Caffeine.consumption),
+          Awakenings = as.factor(Awakenings),
+          Alcohol.consumption = as.factor(Alcohol.consumption), 
+          Smoking.status = as.factor(case_when(
+              Smoking.status == 'Yes' ~ 1,
+              Smoking.status == 'No' ~ 0,
+              TRUE ~ NA)),
+           Gender= as.factor(case_when(
+              Gender == 'Male' ~ 1,
+              Gender == 'Female' ~ 0,
+              TRUE ~ NA)),
+           Exercise.frequency = as.factor(Exercise.frequency)
+          )
+
+head(sleep)
+```
+
+We include 12 variables:
+
+*The response variable:*
+
+>Sleep efficiency: a numerical variable ranging from 0 to 1 that indicates the proportion of time in bed spent asleep
+
+*The explanatory variables are:*
+
+>1. Age: numerical variable ranges from 9 to 69
+2. Gender: categorical / dummy variable with 50% of the data is male and the rest half female
+3. Sleep duration: numerical variable indicating the total amount of time the test subject slept (in hours).
+4. Awakenings: categorical variable indicating the number of times the test subject wakes up during the night
+5. REM sleep percentage: numerical variable indicating the percentage of total sleep time spent in REM (rapid eye movement) sleep 
+    - REM sleep is the stage where people have intense brain activities (dreams) and restores the areas of the brain that help with memory and learning. 20% of the total sleep time in the REM stage is considered good 
+>6. Deep sleep percentage: numerical variable indicating the percentage of total sleep time spent in Deep (non - rapid eye movement) sleep 
+    - Deep sleep is important for body to replenish energy stores and repair muscles, bones, and tissue. 15% to 25% of the total sleep time in the deep sleep stage is considered normal  
+>7. Light sleep percentage:  numerical variable indicating the percentage of total sleep time spent in Light sleep
+    - Light sleep is the transitional stage between waking and sleeping. Typically take up about 50% to 60% or more of the total sleep time     
+>8. Caffeine consumption: categorical variable indicating the amount of caffeine consumed in the 24 hours prior to bedtime (in mg)
+9. Alcohol consumption: categorical variable indicating the amount of alcohol consumed in the 24 hours prior to bedtime (in oz)
+10. Smoking status: categorical / dummy variable that states whether or not the person smokes
+11. Exercise frequency: categorical variable indicating the number of times the person exercises each week
+
+Although some explanatory variables seem to be numerical (e.g., Alcohol consumption, Caffeine consumption), the number of values that these variables take is limited; therefore, we can view these variables as categorical with a few levels. 
+
+```{r}
+sleep_data <- sleep |>
+    select(-ID, -Bedtime, -Wakeup.time)
+head(sleep_data)
+```
+
+```{r}
+set.seed(1)
+
+train_ind <- sample.int(nrow(sleep_data), size = nrow(sleep_data) * 0.75)
+
+sleep_train <- sleep_data[train_ind,]
+sleep_test <- sleep_data[-train_ind,]
+```
+
+```{r}
+options(repr.plot.height = 15, repr.plot.width = 20)
+gender_dist <- sleep_train |>
+    ggplot(aes(x = Gender)) +
+    geom_bar() +
+    ylab('') +
+    theme(text = element_text(size = 12))
+
+awaken_dist <- sleep_train |>
+    ggplot(aes(x = Awakenings)) +
+    geom_bar() +
+    ylab('') +
+    theme(text = element_text(size = 12))
+
+coffee_dist <- sleep_train |>
+    ggplot(aes(x = Caffeine.consumption)) +
+    geom_bar() +
+    ylab('') +
+    theme(text = element_text(size = 12))
+
+alcohol_dist <- sleep_train |>
+    ggplot(aes(x = Alcohol.consumption)) +
+    geom_bar() +
+    ylab('') +
+    theme(text = element_text(size = 12))
+
+smoke_dist <- sleep_train |>
+    ggplot(aes(x = Smoking.status)) +
+    geom_bar() +
+    ylab('') +
+    theme(text = element_text(size = 12))
+
+exercise_dist <- sleep_train |>
+    ggplot(aes(x = Exercise.frequency)) +
+    geom_bar() +
+    ylab('') +
+    theme(text = element_text(size = 12))
+
+# plot 6 barplots in one graph
+plot_row <- plot_grid(gender_dist, awaken_dist, coffee_dist, alcohol_dist, smoke_dist, 
+          exercise_dist, nrow = 2)
+
+# now add the title
+title <- ggdraw() + 
+  draw_label(
+    "Distributions",
+    fontface = 'bold',
+    x = 0,
+    hjust = 0
+  ) +
+  theme(
+    # add margin on the left of the drawing canvas,
+    # so title is aligned with left edge of first plot
+    plot.margin = margin(0, 0, 0, 7)
+  )
+plot_grid(
+  title, plot_row,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+```
+
+
+```{r}
+options(repr.plot.height = 15, repr.plot.width = 15)
+sleep_train |>
+    ggpairs(columns = c('Age', 'Sleep.duration', 'Sleep.efficiency', 'REM.sleep.percentage', 'Deep.sleep.percentage', 'Light.sleep.percentage'))
+```
+
+Looking at this ggpairs graph which only includes the numerical variables, we see that only deep sleep percentage and light sleep percentage are strongly correlated with the reponse variable (sleep efficiency). Their correlation are 0.804 and -0.833 respectively. 
+
+Almost all the explanatory variables have no significant correlation with each other except deep sleep percentage and light sleep percentage. These two variables have a very strong correlation that is -0.976, and their correspong scatterplot also exbihits a strong negative linear relationship. This could result in a very problematic issue called collinearity. 
+
+Therefore, we will perform a forward selection process to determine which set of variables will be included in the model building.  
+
