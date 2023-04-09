@@ -13,6 +13,8 @@ library(tidyverse)
 library(RColorBrewer)
 library(GGally)
 library(cowplot)
+library(mltools)
+library(leaps)
 ```
 
 ## Introduction
@@ -89,7 +91,7 @@ head(sleep_data)
 ```{r}
 set.seed(1)
 
-train_ind <- sample.int(nrow(sleep_data), size = nrow(sleep_data) * 0.75)
+train_ind <- sample.int(nrow(sleep_data), size = nrow(sleep_data) * 0.70, replace = F)
 
 sleep_train <- sleep_data[train_ind,]
 sleep_test <- sleep_data[-train_ind,]
@@ -157,17 +159,122 @@ plot_grid(
   rel_heights = c(0.1, 1)
 )
 ```
-
+Here we explore the distributions of all categorical explanatory variables. We see that we have roughly the same number of people for each gender and have the number of nonsmokers twice as large as that of smokers. Awakenings and exercise frequency are more evenly distributed, while caffeine consumption and alcohol consumption are skewed to the right. 
 
 ```{r}
-options(repr.plot.height = 15, repr.plot.width = 15)
+options(repr.plot.height = 20, repr.plot.width = 20)
 sleep_train |>
     ggpairs(columns = c('Age', 'Sleep.duration', 'Sleep.efficiency', 'REM.sleep.percentage', 'Deep.sleep.percentage', 'Light.sleep.percentage'))
 ```
 
-Looking at this ggpairs graph which only includes the numerical variables, we see that only deep sleep percentage and light sleep percentage are strongly correlated with the reponse variable (sleep efficiency). Their correlation are 0.804 and -0.833 respectively. 
+Looking at this ggpairs graph which only includes the numerical variables, we see that only deep sleep percentage and light sleep percentage are strongly correlated with the response variable (sleep efficiency). Their correlation are 0.800 and -0.829 respectively. 
 
-Almost all the explanatory variables have no significant correlation with each other except deep sleep percentage and light sleep percentage. These two variables have a very strong correlation that is -0.976, and their correspong scatterplot also exbihits a strong negative linear relationship. This could result in a very problematic issue called collinearity. 
+Almost all the explanatory variables have no significant correlation with each other except deep sleep percentage and light sleep percentage. These two variables have a very strong correlation that is -0.975, and their corresponding scatterplot also exhibits a strong negative linear relationship. This could result in a very problematic issue called collinearity. 
 
-Therefore, we will perform a forward selection process to determine which set of variables will be included in the model building.  
+Therefore, we will only include deep sleep percentage as one of the explanatory variables. 
 
+```{r}
+sleep_train <- sleep_train |>
+  select(-Light.sleep.percentage)
+```
+
+Let's start by making a full model regression which includes all the explanatory variables.
+
+```{r}
+full_regression <- lm(Sleep.efficiency ~., data = sleep_train)
+full_reg_summ <- summary(full_regression)
+
+full_reg_pred <- predict(full_regression, newdata = sleep_test)
+sleep_R_MSE_models <- tibble(
+  Model = "Full Regression",
+  R_MSE = rmse(
+    preds = full_reg_pred,
+    actual = sleep_test$Sleep.efficiency,
+    na.rm = TRUE),
+  AIC = AIC(full_regression),
+  BIC = BIC(full_regression),
+  adjusted_R_sq = full_reg_summ$adj.r.squared)
+sleep_R_MSE_models
+
+# Here we compute Root Mean Squared Error so that we can use it as a
+# comparison metric between best fit models
+
+```
+Now we can begin the forward selection process. We also will compute values of RSS, BIC, and Cp to help decide which sized model is the best fit.
+
+```{r}
+sleep_forward_selection <- regsubsets(
+  x = Sleep.efficiency ~., nvmax = 11,
+  data = sleep_train,
+  method = "forward")
+sleep_forward_selection
+
+sleep_forward_summary <- summary(sleep_forward_selection)
+
+sleep_forward_summary_df <- tibble(
+  n_input_variables = 1:11,
+  RSS = sleep_forward_summary$rss,
+  BIC = sleep_forward_summary$bic,
+  Cp = sleep_forward_summary$cp)
+
+sleep_forward_summary_df
+# We can see that the lowest Cp is with 7 variables
+summary(sleep_forward_selection)
+```
+We found that the best model has 7 variables and found which ones from the chart above. Now we can put that into a model and compare it with the original.
+
+```{r}
+#make the model with 7 variables
+sleep_selected_regression <- lm(Sleep.efficiency ~ Age + REM.sleep.percentage + 
+                                  Deep.sleep.percentage + Awakenings + 
+                                  Alcohol.consumption + Smoking.status + 
+                                  Exercise.frequency, data = sleep_train)
+selected_reg_summ <- summary(sleep_selected_regression)
+
+#fit a predicted model
+sleep_selected_reg_pred <- predict(sleep_selected_regression, newdata = sleep_test)
+
+#Now we can compare the RMSE on the models
+sleep_R_MSE_models <- rbind(
+  sleep_R_MSE_models,
+  tibble(
+    Model = "Selected Regression",
+    R_MSE = rmse(
+      preds = sleep_selected_reg_pred,
+      actuals = sleep_test$Sleep.efficiency,
+      na.rm = TRUE),
+  AIC = AIC(sleep_selected_regression),
+  BIC = BIC(sleep_selected_regression),
+  adjusted_R_sq = selected_reg_summ$adj.r.squared))
+sleep_R_MSE_models
+```
+We can further fit a model with interaction terms.
+
+```{r}
+sleep_selected_reg_int <- lm(Sleep.efficiency ~ Age * Deep.sleep.percentage + 
+                               REM.sleep.percentage + Awakenings + 
+                               Alcohol.consumption + Smoking.status + 
+                               Exercise.frequency, data = sleep_train)
+
+selected_reg_int_summ <- summary(sleep_selected_reg_int)
+
+#fit a predicted model
+sleep_selected_reg_int_pred <- predict(sleep_selected_reg_int, newdata = sleep_test)
+
+#Now we can compare the RMSE on the models
+sleep_R_MSE_models <- rbind(
+  sleep_R_MSE_models,
+  tibble(
+    Model = "Selected Regression with Interaction",
+    R_MSE = rmse(
+      preds = sleep_selected_reg_int_pred,
+      actuals = sleep_test$Sleep.efficiency,
+      na.rm = TRUE),
+  AIC = AIC(sleep_selected_reg_int),
+  BIC = BIC(sleep_selected_reg_int),
+  adjusted_R_sq = selected_reg_int_summ $adj.r.squared))
+sleep_R_MSE_models
+
+```
+
+From here, we can find that the model with the lowest RMSE value gives the best out-of-sample prediction performance. In this example, we can see that the regression model where we selected the variables using forward regression produces a better model. Here we showed that selecting variables helps improve the model, in which we used a forward selection process to find that. We also found that in a model with 7 out of 11 selected variables: Gender, Sleep duration, and Caffeine Consumption were not as helpful in comparison to the other variables when predicting Sleep efficiency- which is an interesting discovery. It helps us to answer our research question which asks which variables are most important. We were surprised to find that caffeine consumption wasn't as important to be kept in the model, as we found many studies when researching that implied the opposite.
