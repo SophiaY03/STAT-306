@@ -15,6 +15,7 @@ library(GGally)
 library(cowplot)
 library(mltools)
 library(leaps)
+library(tidymodels)
 ```
 
 ## Introduction
@@ -89,12 +90,11 @@ head(sleep_data)
 ```
 
 ```{r}
-set.seed(1)
+set.seed(42)
+sleep_split <- initial_split(sleep_data, prop = 0.7, strata = Sleep.efficiency)
 
-train_ind <- sample.int(nrow(sleep_data), size = nrow(sleep_data) * 0.70, replace = F)
-
-sleep_train <- sleep_data[train_ind,]
-sleep_test <- sleep_data[-train_ind,]
+sleep_train <- training(sleep_split)
+sleep_test <- testing(sleep_split)
 ```
 
 ```{r}
