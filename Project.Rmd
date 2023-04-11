@@ -59,21 +59,21 @@ We include 12 variables:
 
 *The response variable:*
 
->Sleep efficiency: a numerical variable ranging from 0 to 1 that indicates the proportion of time in bed spent asleep
+Sleep efficiency: a numerical variable ranging from 0 to 1 that indicates the proportion of time in bed spent asleep
 
 *The explanatory variables are:*
 
->1. Age: numerical variable ranges from 9 to 69
+1. Age: numerical variable ranges from 9 to 69
 2. Gender: categorical / dummy variable with 50% of the data is male and the rest half female
 3. Sleep duration: numerical variable indicating the total amount of time the test subject slept (in hours).
 4. Awakenings: categorical variable indicating the number of times the test subject wakes up during the night
 5. REM sleep percentage: numerical variable indicating the percentage of total sleep time spent in REM (rapid eye movement) sleep 
     - REM sleep is the stage where people have intense brain activities (dreams) and restores the areas of the brain that help with memory and learning. 20% of the total sleep time in the REM stage is considered good 
->6. Deep sleep percentage: numerical variable indicating the percentage of total sleep time spent in Deep (non - rapid eye movement) sleep 
+6. Deep sleep percentage: numerical variable indicating the percentage of total sleep time spent in Deep (non - rapid eye movement) sleep 
     - Deep sleep is important for body to replenish energy stores and repair muscles, bones, and tissue. 15% to 25% of the total sleep time in the deep sleep stage is considered normal  
->7. Light sleep percentage:  numerical variable indicating the percentage of total sleep time spent in Light sleep
+7. Light sleep percentage:  numerical variable indicating the percentage of total sleep time spent in Light sleep
     - Light sleep is the transitional stage between waking and sleeping. Typically take up about 50% to 60% or more of the total sleep time     
->8. Caffeine consumption: categorical variable indicating the amount of caffeine consumed in the 24 hours prior to bedtime (in mg)
+8. Caffeine consumption: categorical variable indicating the amount of caffeine consumed in the 24 hours prior to bedtime (in mg)
 9. Alcohol consumption: categorical variable indicating the amount of alcohol consumed in the 24 hours prior to bedtime (in oz)
 10. Smoking status: categorical / dummy variable that states whether or not the person smokes
 11. Exercise frequency: categorical variable indicating the number of times the person exercises each week
@@ -162,9 +162,9 @@ sleep_train |>
     ggpairs(columns = c('Age', 'Sleep.duration', 'Sleep.efficiency', 'REM.sleep.percentage', 'Deep.sleep.percentage', 'Light.sleep.percentage'))
 ```
 
-Looking at this ggpairs graph which only includes the numerical variables, we see that only deep sleep percentage and light sleep percentage are strongly correlated with the response variable (sleep efficiency). Their correlation are 0.800 and -0.829 respectively. 
+Looking at this ggpairs graph which only includes the numerical variables, we see that only deep sleep percentage and light sleep percentage are strongly correlated with the response variable (sleep efficiency). Their correlation are 0.783 and -0.816 respectively. 
 
-Almost all the explanatory variables have no significant correlation with each other except deep sleep percentage and light sleep percentage. These two variables have a very strong correlation that is -0.975, and their corresponding scatterplot also exhibits a strong negative linear relationship. This could result in a very problematic issue called collinearity. 
+Almost all the explanatory variables have no significant correlation with each other except deep sleep percentage and light sleep percentage. These two variables have a very strong correlation that is -0.974, and their corresponding scatterplot also exhibits a strong negative linear relationship. This could result in a very problematic issue called collinearity. 
 
 Therefore, we will only include deep sleep percentage as one of the explanatory variables. 
 
@@ -352,7 +352,8 @@ Based on the conclusion above, we showed that selecting variables helps improve 
 plot(sleep_selected_regression, 1)
 plot(sleep_selected_regression, 2)
 plot(fitted(sleep_selected_regression), rstandard(sleep_selected_regression),
-     main = 'Standardized Residuals vs. Fitted')
+     main = 'Standardized Residuals vs. Fitted',
+     xlab = 'Fitted values', ylab = 'Standardised residuals')
 
 ```
 Here we see that the best model we choose may not be the most suitable. It seems that the residual plot does not have a constant variance, and the data points are clustered in 2 groups, but the residuals follows a Normal distribution approximately. The standardized residual plot also shows that we may have a problem with our model since there are too many data points lying outside the range [-2, 2]. If they follow the Normal distribution exactly, there should be only 3 data points outside this range given the empirical rule. 
