@@ -15,7 +15,6 @@ library(GGally)
 library(cowplot)
 library(mltools)
 library(leaps)
-library(tidymodels)
 ```
 
 ## Introduction
@@ -54,8 +53,6 @@ sleep <- sleep |>
               TRUE ~ NA)),
            Exercise.frequency = as.factor(Exercise.frequency)
           )
-
-head(sleep)
 ```
 
 We include 12 variables:
@@ -86,15 +83,13 @@ Although some explanatory variables seem to be numerical (e.g., Alcohol consumpt
 ```{r}
 sleep_data <- sleep |>
     select(-ID, -Bedtime, -Wakeup.time)
-head(sleep_data)
 ```
 
 ```{r}
-set.seed(42)
-sleep_split <- initial_split(sleep_data, prop = 0.7, strata = Sleep.efficiency)
-
-sleep_train <- training(sleep_split)
-sleep_test <- testing(sleep_split)
+set.seed(123)
+train_ind <- sample.int(nrow(sleep_data), size = nrow(sleep_data) * 0.70, replace = F)
+sleep_train <- sleep_data[train_ind,]
+sleep_test <- sleep_data[-train_ind,]
 ```
 
 ```{r}
@@ -198,7 +193,6 @@ sleep_R_MSE_models
 
 # Here we compute Root Mean Squared Error so that we can use it as a
 # comparison metric between best fit models
-
 ```
 Now we can begin the forward selection process. We also will compute values of RSS, BIC, and Cp to help decide which sized model is the best fit.
 
@@ -248,33 +242,123 @@ sleep_R_MSE_models <- rbind(
   adjusted_R_sq = selected_reg_summ$adj.r.squared))
 sleep_R_MSE_models
 ```
-We can further fit a model with interaction terms.
+We also tried to add some interaction terms to explore some potential relationship:
+Here we create interactions of age and other variables and split them into 4 different models. The reason why we choose Age is that there are a lot of factors may be affected by age. For example, the damage of smoking may vary for people in different ages.
 
 ```{r}
-sleep_selected_reg_int <- lm(Sleep.efficiency ~ Age * Deep.sleep.percentage + 
+#model with an interaction term Age*Smoking.status
+sleep_inter1 <- lm(Sleep.efficiency ~ Age * Smoking.status + 
                                REM.sleep.percentage + Awakenings + 
-                               Alcohol.consumption + Smoking.status + 
+                               Alcohol.consumption + Deep.sleep.percentage + 
                                Exercise.frequency, data = sleep_train)
 
-selected_reg_int_summ <- summary(sleep_selected_reg_int)
+sleep_inter1_summ <- summary(sleep_inter1)
 
-#fit a predicted model
-sleep_selected_reg_int_pred <- predict(sleep_selected_reg_int, newdata = sleep_test)
+sleep_inter1_pred <- predict(sleep_inter1, newdata = sleep_test)
 
-#Now we can compare the RMSE on the models
 sleep_R_MSE_models <- rbind(
   sleep_R_MSE_models,
   tibble(
-    Model = "Selected Regression with Interaction",
+    Model = "Selected Regression with Interaction Age*Smoking.status",
     R_MSE = rmse(
-      preds = sleep_selected_reg_int_pred,
+      preds = sleep_inter1_pred,
       actuals = sleep_test$Sleep.efficiency,
       na.rm = TRUE),
-  AIC = AIC(sleep_selected_reg_int),
-  BIC = BIC(sleep_selected_reg_int),
-  adjusted_R_sq = selected_reg_int_summ $adj.r.squared))
-sleep_R_MSE_models
+  AIC = AIC(sleep_inter1),
+  BIC = BIC(sleep_inter1),
+  adjusted_R_sq = sleep_inter1_summ$adj.r.squared))
 
+
+
+#model with an interaction term Age*REM.sleep.percentage
+sleep_inter2 <- lm(Sleep.efficiency ~ Age * REM.sleep.percentage + Smoking.status + 
+                              Awakenings + Alcohol.consumption + Deep.sleep.percentage + 
+                               Exercise.frequency, data = sleep_train)
+
+sleep_inter2_summ <- summary(sleep_inter2)
+
+sleep_inter2_pred <- predict(sleep_inter2, newdata = sleep_test)
+
+sleep_R_MSE_models <- rbind(
+  sleep_R_MSE_models,
+  tibble(
+    Model = "Selected Regression with Interaction Age*REM.sleep.percentage",
+    R_MSE = rmse(
+      preds = sleep_inter2_pred,
+      actuals = sleep_test$Sleep.efficiency,
+      na.rm = TRUE),
+  AIC = AIC(sleep_inter2),
+  BIC = BIC(sleep_inter2),
+  adjusted_R_sq = sleep_inter2_summ$adj.r.squared))
+
+
+
+
+#model with an interaction term Age*Deep.sleep.percentage
+sleep_inter3 <- lm(Sleep.efficiency ~ Age * Deep.sleep.percentage + REM.sleep.percentage + 
+                     Smoking.status + Awakenings + Alcohol.consumption +
+                    Exercise.frequency, data = sleep_train)
+
+sleep_inter3_summ <- summary(sleep_inter3)
+
+sleep_inter3_pred <- predict(sleep_inter3, newdata = sleep_test)
+
+sleep_R_MSE_models <- rbind(
+  sleep_R_MSE_models,
+  tibble(
+    Model = "Selected Regression with Interaction Age*Deep.sleep.percentage",
+    R_MSE = rmse(
+      preds = sleep_inter3_pred,
+      actuals = sleep_test$Sleep.efficiency,
+      na.rm = TRUE),
+  AIC = AIC(sleep_inter3),
+  BIC = BIC(sleep_inter3),
+  adjusted_R_sq = sleep_inter3_summ$adj.r.squared))
+
+
+
+
+#model with an interaction term Age*Awakenings
+sleep_inter4 <- lm(Sleep.efficiency ~ Age * Awakenings + Deep.sleep.percentage + 
+                     REM.sleep.percentage + Smoking.status + Alcohol.consumption +
+                    Exercise.frequency, data = sleep_train)
+
+sleep_inter4_summ <- summary(sleep_inter4)
+
+sleep_inter4_pred <- predict(sleep_inter4, newdata = sleep_test)
+
+sleep_R_MSE_models <- rbind(
+  sleep_R_MSE_models,
+  tibble(
+    Model = "Selected Regression with Interaction Age*Awakenings",
+    R_MSE = rmse(
+      preds = sleep_inter4_pred,
+      actuals = sleep_test$Sleep.efficiency,
+      na.rm = TRUE),
+  AIC = AIC(sleep_inter4),
+  BIC = BIC(sleep_inter4),
+  adjusted_R_sq = sleep_inter4_summ$adj.r.squared))
+sleep_R_MSE_models
 ```
 
+By comparing rmse amond inter_models we see that inter1 and 2 have the highest rmse and 3,4 seem to have similar rmse to selected model.
+So we conjecture maybe interaction terms do not really matter. But there is one interesting thing we found that inter3 model has the highest rsq among all non-full regression models although the ineraction term Age*Deep.sleep.percentage do not have an ideal significance.
+
 From here, we can find that the model with the lowest RMSE value gives the best out-of-sample prediction performance. In this example, we can see that the regression model where we selected the variables using forward regression produces a better model. Here we showed that selecting variables helps improve the model, in which we used a forward selection process to find that. We also found that in a model with 7 out of 11 selected variables: Gender, Sleep duration, and Caffeine Consumption were not as helpful in comparison to the other variables when predicting Sleep efficiency- which is an interesting discovery. It helps us to answer our research question which asks which variables are most important. We were surprised to find that caffeine consumption wasn't as important to be kept in the model, as we found many studies when researching that implied the opposite.
+
+
+
+
+
+
+
+```{r}
+plot(full_regression, 1)
+plot(sleep_selected_regression, 1)
+```
+
+
+#In summary, based on our linear regression model, we find that sleep efficency is closely related to people's age, REM.sleep.percentage, Deep.sleep.percentage, awakening times and Smoking.status.
+#Before the research started, we expected the alcohol comsumption, exercise frequency and caffine comsumption would be the most important factors, but the result shows differet. However the age
+#is also a factor that will increase the sleep efficiency is what we unexpected. The other exploratory variables come as no surprise, smoking and awakening will decrease you sleep efficency, and deep 
+#sleep and REM sleep will give you a high quality sleep.
