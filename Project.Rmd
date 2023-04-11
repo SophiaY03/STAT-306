@@ -341,22 +341,23 @@ sleep_R_MSE_models <- rbind(
 sleep_R_MSE_models
 ```
 
-By comparing rmse amond inter_models we see that inter1 and 2 have the highest rmse and 3,4 seem to have similar rmse to selected model.
-So we conjecture maybe interaction terms do not really matter. But there is one interesting thing we found that inter3 model has the highest rsq among all non-full regression models although the ineraction term Age*Deep.sleep.percentage do not have an ideal significance.
+From here, we can find that the model with the lowest RMSE value, lowest AIC value, lowest BIC value, and highest adjusted R squared value gives the best out-of-sample prediction performance. 
 
-From here, we can find that the model with the lowest RMSE value gives the best out-of-sample prediction performance. In this example, we can see that the regression model where we selected the variables using forward regression produces a better model. Here we showed that selecting variables helps improve the model, in which we used a forward selection process to find that. We also found that in a model with 7 out of 11 selected variables: Gender, Sleep duration, and Caffeine Consumption were not as helpful in comparison to the other variables when predicting Sleep efficiency- which is an interesting discovery. It helps us to answer our research question which asks which variables are most important. We were surprised to find that caffeine consumption wasn't as important to be kept in the model, as we found many studies when researching that implied the opposite.
+In this example, we can see that the regression model where we selected the variables using forward regression produces a better model. The six model we build all have roughly the same value of RMSE and adjusted R square. The full regression model has slightly higher RMSE, but it also has slightly higher adjusted R square value. Therefore, we will use AIC and BIC value to compare models. Here all of the selected regression models (with or without interaction terms) have way smaller AIC and BIC values than the full regression model, but the values between each selected model do not differ much (AIC = -800, BIC = -720 approximately). Selected Regression with Interaction Age*Deep.sleep.percentage has the lowest AIC, and Selected Regression without interaction term has the lowest BIC value. Since models with less number of parameters are preferred, the Selected Regression model without interaction term is the best model.
 
-
-
-
-
+Based on the conclusion above, we showed that selecting variables helps improve the model, in which we used a forward selection process to find that. We also found that in a model with 7 out of 11 selected variables: Gender, Sleep duration, and Caffeine Consumption were not as helpful in comparison to the other variables when predicting Sleep efficiency- which is an interesting discovery. It helps us to answer our research question which asks which variables are most important. We were surprised to find that caffeine consumption wasn't as important to be kept in the model, as we found many studies when researching that implied the opposite. This could be explained by that we only have caffeine consumption as a categorical variable with 4 levels in our model, and hence it could be difficult to fit a linear regression on this limited data we have. If we were able to collect more data (not 4 levels, but a continuous variable precise to 2 decimal places how much caffeine people consume in 24 hours), then we could treat caffeine consumption as a numerical variable and fit a more accurate linear regression model based on it.
 
 
 ```{r}
-plot(full_regression, 1)
 plot(sleep_selected_regression, 1)
-```
+plot(sleep_selected_regression, 2)
+plot(fitted(sleep_selected_regression), rstandard(sleep_selected_regression),
+     main = 'Standardized Residuals vs. Fitted')
 
+```
+Here we see that the best model we choose may not be the most suitable. It seems that the residual plot does not have a constant variance, and the data points are clustered in 2 groups, but the residuals follows a Normal distribution approximately. The standardized residual plot also shows that we may have a problem with our model since there are too many data points lying outside the range [-2, 2]. If they follow the Normal distribution exactly, there should be only 3 data points outside this range given the empirical rule. 
+
+Therefore, we can still improve our model perhaps by collecting more data and include more variables especially changing some categorical variables into numerical.
 
 #In summary, based on our linear regression model, we find that sleep efficency is closely related to people's age, REM.sleep.percentage, Deep.sleep.percentage, awakening times and Smoking.status.
 #Before the research started, we expected the alcohol comsumption, exercise frequency and caffine comsumption would be the most important factors, but the result shows differet. However the age
