@@ -360,7 +360,8 @@ Here we see that the best model we choose may not be the most suitable. It seems
 
 Therefore, we can still improve our model perhaps by collecting more data and include more variables especially changing some categorical variables into numerical.
 
-#In summary, based on our linear regression model, we find that sleep efficency is closely related to people's age, REM.sleep.percentage, Deep.sleep.percentage, awakening times and Smoking.status.
-#Before the research started, we expected the alcohol comsumption, exercise frequency and caffine comsumption would be the most important factors, but the result shows differet. However the age
-#is also a factor that will increase the sleep efficiency is what we unexpected. The other exploratory variables come as no surprise, smoking and awakening will decrease you sleep efficency, and deep 
-#sleep and REM sleep will give you a high quality sleep.
+In summary, based on our linear regression model, we find that sleep efficency is closely related to people's age, REM.sleep.percentage, Deep.sleep.percentage, awakening times and Smoking.status.
+
+Before the research started, we expected the alcohol comsumption, exercise frequency and caffine comsumption would be the most important factors, but the result shows differet. However the age is also a factor that will increase the sleep efficiency is what we unexpected. The other exploratory variables come as no surprise, smoking and awakening will decrease you sleep efficency, and deep sleep and REM sleep will give you a high quality sleep.
+
+
